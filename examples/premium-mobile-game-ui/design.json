@@ -1,0 +1,154 @@
+{
+  "$schema": "https://raw.githubusercontent.com/remirdy/remirdy-photoshop-mcp/main/packages/shared/design.schema.json",
+  "document": {
+    "name": "ColorCrateSort_GameplayUI_Demo",
+    "width": 1290,
+    "height": 2796,
+    "backgroundColor": "#140B2E",
+    "resolution": 72,
+    "colorMode": "RGB"
+  },
+  "groups": [
+    "01_BG",
+    "02_GAMEPLAY_SCENE/Game_Board",
+    "02_GAMEPLAY_SCENE/Puzzle_Area",
+    "02_GAMEPLAY_SCENE/Tile_Placeholders",
+    "02_GAMEPLAY_SCENE/Crate_Row",
+    "02_GAMEPLAY_SCENE/Lighting_FX",
+    "03_UI/Top_HUD/Coin_Counter",
+    "03_UI/Top_HUD/Level_Indicator",
+    "03_UI/Top_HUD/Settings_Button",
+    "03_UI/Bottom_HUD/Booster_Row",
+    "04_POPUP/Scrim",
+    "04_POPUP/Modal",
+    "05_EXPORT_NOTES"
+  ],
+  "layers": [
+    {
+      "type": "shape",
+      "kind": "rectangle",
+      "name": "BG_Base",
+      "x": 0,
+      "y": 0,
+      "width": 1290,
+      "height": 2796,
+      "fill": "#140B2E",
+      "parentGroup": "01_BG"
+    },
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "CoinCounter_BG",
+      "x": 80,
+      "y": 80,
+      "width": 310,
+      "height": 96,
+      "radius": 36,
+      "fill": "#321B58",
+      "stroke": { "color": "#6B45A0", "width": 3 },
+      "shadow": { "enabled": true, "opacity": 35, "blur": 18, "distance": 8, "angle": 90, "color": "#000000" },
+      "parentGroup": "03_UI/Top_HUD/Coin_Counter"
+    },
+    {
+      "type": "shape",
+      "kind": "circle",
+      "name": "CoinCounter_Icon",
+      "x": 100,
+      "y": 96,
+      "diameter": 64,
+      "fill": "#F7B833",
+      "stroke": { "color": "#FFE08A", "width": 3 },
+      "parentGroup": "03_UI/Top_HUD/Coin_Counter"
+    },
+    {
+      "type": "text",
+      "name": "CoinCounter_Text",
+      "text": "2,450",
+      "x": 190,
+      "y": 105,
+      "fontSize": 42,
+      "color": "#FFF2C8",
+      "fontFamily": "Arial Rounded MT Bold",
+      "align": "left",
+      "parentGroup": "03_UI/Top_HUD/Coin_Counter"
+    },
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "LevelIndicator_BG",
+      "x": 490,
+      "y": 80,
+      "width": 310,
+      "height": 96,
+      "radius": 36,
+      "fill": "#321B58",
+      "stroke": { "color": "#6B45A0", "width": 3 },
+      "parentGroup": "03_UI/Top_HUD/Level_Indicator"
+    },
+    {
+      "type": "text",
+      "name": "LevelIndicator_Text",
+      "text": "LEVEL 12",
+      "x": 645,
+      "y": 108,
+      "fontSize": 44,
+      "color": "#FFF2C8",
+      "fontFamily": "Arial Rounded MT Bold",
+      "align": "center",
+      "parentGroup": "03_UI/Top_HUD/Level_Indicator"
+    },
+    {
+      "type": "shape",
+      "kind": "circle",
+      "name": "SettingsButton_BG",
+      "x": 1110,
+      "y": 80,
+      "diameter": 96,
+      "fill": "#321B58",
+      "stroke": { "color": "#6B45A0", "width": 3 },
+      "parentGroup": "03_UI/Top_HUD/Settings_Button"
+    },
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "GameBoard_Base",
+      "x": 80,
+      "y": 460,
+      "width": 1130,
+      "height": 1100,
+      "radius": 32,
+      "fill": "#1E0D40",
+      "stroke": { "color": "#6B45A0", "width": 4 },
+      "shadow": { "enabled": true, "opacity": 50, "blur": 40, "distance": 16, "angle": 90, "color": "#000000" },
+      "parentGroup": "02_GAMEPLAY_SCENE/Game_Board"
+    },
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "PuzzleArea_Base",
+      "x": 120,
+      "y": 500,
+      "width": 1050,
+      "height": 880,
+      "radius": 20,
+      "fill": "#250E50",
+      "parentGroup": "02_GAMEPLAY_SCENE/Puzzle_Area"
+    },
+    {
+      "type": "text",
+      "name": "README_Text_Layer",
+      "text": "Color Crate Sort — Demo Layer Structure\nRemirdy Photoshop MCP | Public Safe Demo",
+      "x": 80,
+      "y": 2700,
+      "fontSize": 20,
+      "color": "#6B45A0",
+      "fontFamily": "Arial",
+      "align": "left",
+      "parentGroup": "05_EXPORT_NOTES"
+    }
+  ],
+  "exports": [
+    { "type": "psd", "path": "./exports/ColorCrateSort_GameplayUI_Demo.psd" },
+    { "type": "png", "path": "./exports/ColorCrateSort_GameplayUI_Demo.png" }
+  ]
+}

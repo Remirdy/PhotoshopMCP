@@ -1,0 +1,35 @@
+{
+  "id": "com.remirdy.photoshop-mcp",
+  "name": "Remirdy Photoshop MCP",
+  "version": "0.1.0",
+  "main": "index.html",
+  "host": [
+    {
+      "app": "PS",
+      "minVersion": "24.0"
+    }
+  ],
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "remirdyPanel",
+      "label": {
+        "default": "Remirdy MCP"
+      },
+      "minimumSize": { "width": 300, "height": 400 },
+      "maximumSize": { "width": 800, "height": 1200 },
+      "preferredDockedSize": { "width": 340, "height": 600 }
+    }
+  ],
+  "manifestVersion": 5,
+  "requiredPermissions": {
+    "localFileSystem": "fullAccess",
+    "network": {
+      "domains": [
+        "localhost",
+        "127.0.0.1"
+      ]
+    },
+    "clipboard": "readAndWrite"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "document": {
+    "name": "RemirdyMCP_Instagram_Post",
+    "width": 1080,
+    "height": 1350,
+    "backgroundColor": "#140B2E",
+    "resolution": 72,
+    "colorMode": "RGB"
+  },
+  "groups": [
+    "01_Background",
+    "02_Content/Hero_Area",
+    "02_Content/Typography",
+    "03_Branding"
+  ],
+  "layers": [
+    {
+      "type": "shape",
+      "kind": "rectangle",
+      "name": "BG_Base",
+      "x": 0, "y": 0, "width": 1080, "height": 1350,
+      "fill": "#140B2E",
+      "parentGroup": "01_Background"
+    },
+    {
+      "type": "text",
+      "name": "Headline",
+      "text": "Prompt → PSD",
+      "x": 80, "y": 480,
+      "fontSize": 120,
+      "color": "#FFF2C8",
+      "fontFamily": "Arial Rounded MT Bold",
+      "align": "left",
+      "parentGroup": "02_Content/Typography"
+    },
+    {
+      "type": "text",
+      "name": "Subheadline",
+      "text": "Editable layers, clean groups,\nexport-ready packages.",
+      "x": 80, "y": 640,
+      "fontSize": 48,
+      "color": "#C8B8E8",
+      "fontFamily": "Arial",
+      "align": "left",
+      "parentGroup": "02_Content/Typography"
+    },
+    {
+      "type": "text",
+      "name": "Brand_Label",
+      "text": "Remirdy Photoshop MCP",
+      "x": 80, "y": 1260,
+      "fontSize": 32,
+      "color": "#6B45A0",
+      "fontFamily": "Arial",
+      "align": "left",
+      "parentGroup": "03_Branding"
+    }
+  ],
+  "exports": [
+    { "type": "png", "path": "./exports/RemirdyMCP_Instagram_Post.png" },
+    { "type": "psd", "path": "./exports/RemirdyMCP_Instagram_Post.psd" }
+  ]
+}

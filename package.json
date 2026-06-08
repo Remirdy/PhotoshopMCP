@@ -1,0 +1,34 @@
+{
+  "name": "remirdy-photoshop-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-controlled Photoshop automation through MCP. Create, organize, edit, audit, and export professional layered PSD files from prompts.",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev:mcp": "pnpm --filter mcp-server dev",
+    "dev:bridge": "pnpm --filter local-bridge dev",
+    "build": "pnpm --recursive build",
+    "build:uxp": "pnpm --filter photoshop-uxp-plugin build",
+    "lint": "pnpm --recursive lint",
+    "typecheck": "pnpm --recursive typecheck",
+    "test": "pnpm --recursive test",
+    "test:mock": "tsx scripts/verify-all.ts",
+    "demo:premium-game-ui": "tsx scripts/run-demo.ts premium-mobile-game-ui",
+    "zip:plugin": "tsx scripts/zip-plugin.ts",
+    "create:demo-assets": "tsx scripts/create-demo-assets.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "dependencies": {
+    "ag-psd": "^30.1.1",
+    "canvas": "^3.2.3"
+  }
+}

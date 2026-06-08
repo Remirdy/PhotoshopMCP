@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Remirdy Photoshop MCP</title>
+  <style>
+    :root {
+      --bg: #1e1e1e; --bg2: #252525; --bg3: #2e2e2e; --border: #444;
+      --text: #e0e0e0; --text-dim: #888; --accent: #7b5ea7; --accent-light: #a07fd0;
+      --green: #4caf50; --red: #e53935; --yellow: #ffc107; --blue: #2196f3;
+      --radius: 6px; --font: "Adobe Clean", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); font-size: 12px; background: var(--bg); color: var(--text); padding: 0; overflow-x: hidden; }
+    #app { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .panel-title { font-size: 14px; font-weight: 700; color: var(--accent-light); }
+    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+    .status-badge.connected { background: rgba(76,175,80,0.15); color: var(--green); border: 1px solid var(--green); }
+    .status-badge.disconnected { background: rgba(229,57,53,0.15); color: var(--red); border: 1px solid var(--red); }
+    .status-badge.connecting { background: rgba(255,193,7,0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+    .section { display: flex; flex-direction: column; gap: 6px; }
+    .doc-info { display: flex; gap: 6px; align-items: center; }
+    .doc-label { color: var(--text-dim); }
+    .doc-name { color: var(--text); font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn { padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent; font-size: 12px; font-family: var(--font); cursor: pointer; font-weight: 600; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent-light); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border-color: var(--border); }
+    .btn-link { background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 0; }
+    .config-row { display: flex; align-items: center; gap: 8px; }
+    .config-label { color: var(--text-dim); white-space: nowrap; width: 72px; }
+    .config-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 11px; padding: 4px 8px; font-family: monospace; }
+    .log-header { display: flex; justify-content: space-between; align-items: center; }
+    .log-title { font-weight: 700; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .job-log { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; min-height: 120px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 11px; line-height: 1.5; display: flex; flex-direction: column; gap: 2px; }
+    .log-entry { display: flex; gap: 6px; }
+    .log-time { color: var(--text-dim); flex-shrink: 0; }
+    .log-ok { color: var(--green); }
+    .log-error { color: var(--red); }
+    .log-info { color: var(--blue); }
+    .log-warn { color: var(--yellow); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="panel-header">
+      <h1 class="panel-title">Remirdy MCP</h1>
+      <span id="status-badge" class="status-badge disconnected">● Disconnected</span>
+    </div>
+
+    <div class="section">
+      <div class="doc-info">
+        <span class="doc-label">Active Document:</span>
+        <span id="doc-name" class="doc-name">—</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="btn-connect" class="btn btn-primary">Connect Bridge</button>
+      <button id="btn-refresh" class="btn btn-secondary">Refresh Status</button>
+      <button id="btn-run-last" class="btn btn-secondary" disabled>Run Last Job</button>
+    </div>
+
+    <div class="section">
+      <div class="config-row">
+        <label class="config-label">Bridge URL:</label>
+        <input id="bridge-url-input" class="config-input" type="text" value="ws://127.0.0.1:47831" />
+      </div>
+      <div class="config-row">
+        <label class="config-label">Token:</label>
+        <input id="bridge-token-input" class="config-input" type="password" placeholder="dev_insecure_token" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="log-header">
+        <span class="log-title">Job Log</span>
+        <button id="btn-clear-log" class="btn-link">Clear</button>
+      </div>
+      <div id="job-log" class="job-log"></div>
+    </div>
+  </div>
+
+  <script>
+    var ws = null;
+    var connected = false;
+    var reconnectTimer = null;
+    var lastJob = null;
+
+    var statusBadge  = document.getElementById("status-badge");
+    var docNameEl    = document.getElementById("doc-name");
+    var btnConnect   = document.getElementById("btn-connect");
+    var btnRefresh   = document.getElementById("btn-refresh");
+    var btnRunLast   = document.getElementById("btn-run-last");
+    var btnClearLog  = document.getElementById("btn-clear-log");
+    var jobLog       = document.getElementById("job-log");
+    var urlInput     = document.getElementById("bridge-url-input");
+    var tokenInput   = document.getElementById("bridge-token-input");
+
+    function getUrl()   { return urlInput.value.trim() || "ws://127.0.0.1:47831"; }
+    function getToken() { return tokenInput.value.trim() || "dev_insecure_token"; }
+
+    function log(msg, type) {
+      var t = new Date().toTimeString().slice(0, 8);
+      var entry = document.createElement("div");
+      entry.className = "log-entry";
+      var safe = String(msg).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      entry.innerHTML = '<span class="log-time">' + t + '</span><span class="log-' + (type||"info") + '">' + safe + '</span>';
+      jobLog.appendChild(entry);
+      jobLog.scrollTop = jobLog.scrollHeight;
+    }
+
+    function setStatus(state) {
+      connected = (state === "connected");
+      statusBadge.className = "status-badge " + state;
+      if (state === "connected")       statusBadge.textContent = "● Connected";
+      else if (state === "connecting") statusBadge.textContent = "● Connecting...";
+      else                             statusBadge.textContent = "● Disconnected";
+      btnConnect.textContent = connected ? "Disconnect" : "Connect Bridge";
+      if (!connected) btnRunLast.disabled = true;
+    }
+
+    function refreshDoc() {
+      try {
+        var doc = (typeof app !== "undefined" && app.activeDocument) ? app.activeDocument : null;
+        docNameEl.textContent = doc ? doc.title : "—";
+      } catch(e) { docNameEl.textContent = "—"; }
+    }
+
+    function connect() {
+      if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+
+      var wsUrl = getUrl() + "?token=" + encodeURIComponent(getToken());
+      setStatus("connecting");
+      log("Connecting to " + getUrl() + "...", "info");
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch(e) {
+        log("WebSocket create failed: " + e.message, "error");
+        setStatus("disconnected");
+        return;
+      }
+
+      ws.onopen = function() {
+        setStatus("connected");
+        log("Connected to bridge!", "ok");
+        ws.send(JSON.stringify({
+          type: "handshake",
+          pluginVersion: "0.1.0",
+          photoshopVersion: (typeof app !== "undefined" && app.version) ? app.version : "unknown",
+          activeDocument: null
+        }));
+      };
+
+      ws.onmessage = function(event) {
+        try {
+          var msg = JSON.parse(event.data);
+          if (msg.type === "hello") {
+            log("Bridge handshake OK", "ok");
+          } else if (msg.type === "job") {
+            log("Job received: " + msg.jobType, "info");
+            lastJob = msg;
+            btnRunLast.disabled = false;
+            handleJob(msg.jobId, msg.jobType, msg.payload);
+          }
+        } catch(e) {
+          log("Parse error: " + e.message, "error");
+        }
+      };
+
+      ws.onerror = function() {
+        log("WebSocket error — is bridge running on port 47831?", "error");
+        setStatus("disconnected");
+      };
+
+      ws.onclose = function() {
+        log("Disconnected from bridge", "warn");
+        setStatus("disconnected");
+        ws = null;
+        reconnectTimer = setTimeout(function() {
+          if (!connected) { log("Auto-reconnecting...", "info"); connect(); }
+        }, 5000);
+      };
+    }
+
+    function disconnect() {
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+      setStatus("disconnected");
+      log("Disconnected", "warn");
+    }
+
+    function sendResult(jobId, result) {
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: "jobResult", jobId: jobId, result: result }));
+      }
+    }
+
+    async function handleJob(jobId, jobType, payload) {
+      try {
+        var result;
+        if (jobType === "ping") {
+          result = { ok: true, message: "pong", data: { pong: true, timestamp: Date.now() }, warnings: [], jobId: jobId, photoshopStatus: "connected" };
+        } else {
+          var mod = await import("./src/jobs/executeJob.js");
+          result = await mod.executeJob(jobId, jobType, payload);
+        }
+        log("✓ " + jobType, "ok");
+        sendResult(jobId, result);
+      } catch(e) {
+        log("✗ " + jobType + ": " + e.message, "error");
+        sendResult(jobId, { ok: false, message: String(e.message), data: null, warnings: [], jobId: jobId, photoshopStatus: "connected" });
+      }
+    }
+
+    btnConnect.addEventListener("click", function() {
+      if (connected) { disconnect(); } else { connect(); }
+    });
+
+    btnRefresh.addEventListener("click", function() {
+      refreshDoc();
+      log("Refreshed", "info");
+    });
+
+    btnRunLast.addEventListener("click", function() {
+      if (lastJob) handleJob(lastJob.jobId + "_retry", lastJob.jobType, lastJob.payload);
+    });
+
+    btnClearLog.addEventListener("click", function() { jobLog.innerHTML = ""; });
+
+    log("Remirdy MCP panel loaded ✓", "ok");
+    log("Bridge URL: " + getUrl(), "info");
+    refreshDoc();
+    setInterval(refreshDoc, 5000);
+  </script>
+</body>
+</html>

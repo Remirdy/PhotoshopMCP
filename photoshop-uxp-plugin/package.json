@@ -1,0 +1,11 @@
+{
+  "name": "photoshop-uxp-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remirdy Photoshop MCP — UXP Plugin for Adobe Photoshop",
+  "scripts": {
+    "build": "echo 'UXP plugin does not require a build step — load from photoshop-uxp-plugin/ directory in Photoshop UXP Developer Tool'",
+    "zip": "node ../../scripts/zip-plugin.js"
+  },
+  "devDependencies": {}
+}

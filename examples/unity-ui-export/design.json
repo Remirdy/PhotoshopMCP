@@ -1,0 +1,54 @@
+{
+  "document": {
+    "name": "Unity_UI_Atlas_Demo",
+    "width": 2048,
+    "height": 2048,
+    "backgroundColor": "#00000000",
+    "resolution": 72,
+    "colorMode": "RGB"
+  },
+  "groups": [
+    "UI_Panel_01",
+    "UI_Button_Primary",
+    "UI_Button_Secondary",
+    "UI_Icon_Coin",
+    "UI_Icon_Star",
+    "UI_HUD_Base"
+  ],
+  "layers": [
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "Panel_01_BG",
+      "x": 0, "y": 0, "width": 800, "height": 600,
+      "radius": 32,
+      "fill": "#2A164C",
+      "stroke": { "color": "#6B45A0", "width": 4 },
+      "parentGroup": "UI_Panel_01"
+    },
+    {
+      "type": "shape",
+      "kind": "roundedRect",
+      "name": "Button_Primary_BG",
+      "x": 0, "y": 0, "width": 400, "height": 120,
+      "radius": 48,
+      "fill": "#237BFF",
+      "parentGroup": "UI_Button_Primary"
+    },
+    {
+      "type": "text",
+      "name": "Button_Primary_Label",
+      "text": "PLAY",
+      "x": 200, "y": 40,
+      "fontSize": 52,
+      "color": "#FFFFFF",
+      "fontFamily": "Arial Rounded MT Bold",
+      "align": "center",
+      "parentGroup": "UI_Button_Primary"
+    }
+  ],
+  "exports": [
+    { "type": "psd", "path": "./exports/Unity_UI_Atlas_Demo.psd" },
+    { "type": "png", "path": "./exports/Unity_UI_Atlas_Demo.png" }
+  ]
+}
