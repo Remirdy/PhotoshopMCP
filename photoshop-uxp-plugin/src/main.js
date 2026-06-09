@@ -131,7 +131,8 @@ btnConnect.addEventListener("click", () => {
       getBridgeUrl(),
       getToken(),
       handleJob,
-      setConnected
+      setConnected,
+      appendLog
     );
     bridgeClient.connect();
   }

@@ -9,11 +9,12 @@ const RECONNECT_MAX_DELAY_MS = 30000;
 const POLL_INTERVAL_MS = 2000;
 
 export class BridgeClient {
-  constructor(url, token, onJob, onStatusChange) {
+  constructor(url, token, onJob, onStatusChange, onLog) {
     this.url = url;
     this.token = token;
     this.onJob = onJob;
     this.onStatusChange = onStatusChange;
+    this.onLog = onLog;
     this.ws = null;
     this.connected = false;
     this.reconnectTimer = null;
@@ -68,10 +69,12 @@ export class BridgeClient {
   _connectWebSocket() {
     try {
       const wsUrl = `${this.url}?token=${encodeURIComponent(this.token)}`;
+      this._log(`Opening WebSocket: ${this.url}`, "info");
       this.ws = new WebSocket(wsUrl);
 
       this.ws.addEventListener("open", () => {
         logger.info("WebSocket connected to bridge");
+        this._log("WebSocket connected to bridge", "ok");
         this._setConnected(true);
         this.usePolling = false;
         this.reconnectAttempts = 0;
@@ -95,19 +98,24 @@ export class BridgeClient {
         }
       });
 
-      this.ws.addEventListener("close", () => {
+      this.ws.addEventListener("close", (event) => {
         logger.warn("WebSocket disconnected, scheduling reconnect");
+        const code = event?.code ? ` code=${event.code}` : "";
+        const reason = event?.reason ? ` reason=${event.reason}` : "";
+        this._log(`WebSocket closed.${code}${reason}`, "warn");
         this._setConnected(false);
         this._scheduleReconnect();
       });
 
       this.ws.addEventListener("error", (err) => {
         logger.error("WebSocket error, falling back to HTTP polling", err);
+        this._log("WebSocket error; starting HTTP polling fallback", "error");
         this._setConnected(false);
         this._startPolling();
       });
     } catch (err) {
       logger.error("Failed to create WebSocket", err);
+      this._log(`Failed to create WebSocket: ${err?.message ?? err}`, "error");
       this._startPolling();
     }
   }
@@ -136,6 +144,7 @@ export class BridgeClient {
     this._clearTimers();
     this.pollTimer = setInterval(() => this._pollNextJob(), POLL_INTERVAL_MS);
     logger.info("HTTP polling mode active");
+    this._log("HTTP polling mode active", "warn");
   }
 
   async _pollNextJob() {
@@ -144,14 +153,23 @@ export class BridgeClient {
       const res = await fetch(`${httpUrl}/jobs/next`, {
         headers: { "X-Bridge-Token": this.token },
       });
+      if (res.status === 401) {
+        this._log("HTTP polling unauthorized: token does not match bridge", "error");
+        return;
+      }
       if (res.status === 204) return; // no job
-      if (!res.ok) return;
+      if (!res.ok) {
+        this._log(`HTTP polling failed: ${res.status}`, "error");
+        return;
+      }
       const job = await res.json();
       if (job && job.id && this.onJob) {
+        this._log(`HTTP polling picked job: ${job.type}`, "info");
         this.onJob(job.id, job.type, job.payload);
       }
     } catch (err) {
       // bridge may not be running yet
+      this._log(`HTTP polling error: ${err?.message ?? err}`, "error");
     }
   }
 
@@ -176,6 +194,10 @@ export class BridgeClient {
   _setConnected(connected) {
     this.connected = connected;
     if (this.onStatusChange) this.onStatusChange(connected);
+  }
+
+  _log(message, type = "info") {
+    if (this.onLog) this.onLog(message, type);
   }
 
   _getActiveDocumentName() {

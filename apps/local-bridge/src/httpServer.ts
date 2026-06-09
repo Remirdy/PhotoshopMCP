@@ -88,26 +88,10 @@ export function createHttpApp(
     const job = jobQueue.create(body.type as JobType, body.payload ?? {});
 
     const plugin = getConnectedPlugin();
-    if (!plugin) {
-      // No plugin connected — return immediately as pending
-      logger.warn("No plugin connected, job queued but cannot be dispatched", { jobId: job.id });
-      res.status(202).json({
-        jobId: job.id,
-        status: "queued",
-        message: "Photoshop plugin is not connected. Job queued.",
-      });
-      return;
-    }
 
-    // Dispatch to plugin and return a promise
-    const dispatched = sendJobToPlugin(job.id, body.type, body.payload ?? {});
-    if (!dispatched) {
-      res.status(202).json({ jobId: job.id, status: "queued" });
-      return;
-    }
-    jobQueue.markRunning(job.id);
-
-    // Wait for result via pending resolvers
+    // Register a pending resolver regardless of connection mode.
+    // If the plugin uses HTTP polling, it will POST the result to /jobs/:id/result
+    // which resolves this promise. If WebSocket, sendJobToPlugin resolves it.
     const resultPromise = new Promise<JobResult>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         pendingResolvers.delete(job.id);
@@ -117,6 +101,21 @@ export function createHttpApp(
 
       pendingResolvers.set(job.id, { resolve, reject, timeoutId });
     });
+
+    if (!plugin) {
+      // No WebSocket plugin — job is queued for HTTP polling pickup.
+      // We still wait via the pendingResolver above.
+      logger.info("No WS plugin; job queued for HTTP polling pickup", { jobId: job.id });
+    } else {
+      // Dispatch to plugin over WebSocket
+      const dispatched = sendJobToPlugin(job.id, body.type, body.payload ?? {});
+      if (!dispatched) {
+        // WebSocket send failed — fall through to HTTP polling wait
+        logger.warn("WebSocket dispatch failed, waiting for HTTP polling", { jobId: job.id });
+      } else {
+        jobQueue.markRunning(job.id);
+      }
+    }
 
     resultPromise
       .then((result) => {

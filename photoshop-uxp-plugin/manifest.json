@@ -1,7 +1,7 @@
 {
   "id": "com.remirdy.photoshop-mcp",
   "name": "Remirdy Photoshop MCP",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "index.html",
   "host": [
     {
@@ -25,10 +25,7 @@
   "requiredPermissions": {
     "localFileSystem": "fullAccess",
     "network": {
-      "domains": [
-        "localhost",
-        "127.0.0.1"
-      ]
+      "domains": "all"
     },
     "clipboard": "readAndWrite"
   }

@@ -29,14 +29,35 @@ export async function createDocument(payload) {
   }
 
   return executeAsModal(async () => {
-    const doc = await app.documents.add({
-      width: docWidth,
-      height: docHeight,
-      resolution,
-      name,
-      mode: colorMode === "RGB" ? 2 : (colorMode === "CMYK" ? 3 : 1),
-      fill: transparent ? 1 /* transparent */ : 2 /* backgroundColor */,
-    });
+    let doc;
+    try {
+      doc = await app.documents.add({
+        width: docWidth,
+        height: docHeight,
+        resolution,
+        name,
+        mode: colorMode === "RGB" ? 2 : (colorMode === "CMYK" ? 3 : 1),
+        fill: transparent ? 1 /* transparent */ : 2 /* backgroundColor */,
+      });
+    } catch (err) {
+      logger.warn(`documents.add failed, falling back to batchPlay: ${err.message}`);
+      await batchPlay([
+        {
+          _obj: "make",
+          _target: [{ _ref: "document" }],
+          using: {
+            _obj: "document",
+            name,
+            width: { _unit: "pixelsUnit", _value: docWidth },
+            height: { _unit: "pixelsUnit", _value: docHeight },
+            resolution: { _unit: "densityUnit", _value: resolution },
+            mode: { _enum: "colorMode", _value: colorMode === "CMYK" ? "CMYKColorMode" : "RGBColorMode" },
+            fill: { _enum: "fill", _value: transparent ? "transparent" : "white" },
+          },
+        },
+      ], { synchronousExecution: false });
+      doc = app.activeDocument;
+    }
 
     // Set background color if not transparent
     if (!transparent && backgroundColor !== "#FFFFFF") {

@@ -640,7 +640,7 @@ export class BridgeClient {
           smartObjectsCount: 4,
           embeddedCount: 3,
           linkedCount: 1,
-          linkedSmartObjects: ["/Users/designer/shared/icons.psd"],
+          linkedSmartObjects: ["/mock/shared/icons.psd"],
         };
       }
 

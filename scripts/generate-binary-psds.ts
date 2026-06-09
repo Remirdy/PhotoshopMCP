@@ -3,7 +3,7 @@ import path from "path";
 import { writePsd } from "ag-psd";
 import { createCanvas, loadImage } from "canvas";
 
-const workspaceDir = "/Users/emirhan/Desktop/Photoshop_MCP/remirdy-photoshop-mcp/workspace";
+const workspaceDir = process.env.REMIRDY_WORKSPACE ?? path.join(process.cwd(), "workspace");
 const caseDir = path.join(workspaceDir, "KnitFlowCase");
 
 const paths = {
