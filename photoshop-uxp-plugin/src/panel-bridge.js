@@ -741,13 +741,15 @@ async function runBatchPlay(payload) {
   if (!descriptors || !descriptors.length) throw new Error("batchPlay requires descriptors");
   var batchPlay = require("photoshop").action.batchPlay;
   var name = payload.historyName || "Claude batchPlay";
-  var results = await runAsHistoryStep(name, payload.history, payload, function () {
-    return batchPlay(descriptors, payload.options || {});
+  var results = await runAsHistoryStep(name, payload.history, payload, async function () {
+    var batchResults = await batchPlay(descriptors, payload.options || {});
+    var failed = (batchResults || []).filter(function (r) { return r && r._obj === "error"; });
+    // Throw inside the history step so the whole batch is rolled back
+    if (failed.length) {
+      throw new Error("batchPlay error: " + failed.map(function (r) { return r.message || JSON.stringify(r); }).join("; "));
+    }
+    return batchResults;
   });
-  var failed = (results || []).filter(function (r) { return r && r._obj === "error"; });
-  if (failed.length) {
-    throw new Error("batchPlay error: " + failed.map(function (r) { return r.message || JSON.stringify(r); }).join("; "));
-  }
   return { results: toPlain(results) };
 }
 

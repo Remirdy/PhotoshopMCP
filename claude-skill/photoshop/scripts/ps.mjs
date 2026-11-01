@@ -32,7 +32,7 @@
  * run/eval options:
  *   --args '<json>'   Value exposed to the script as `args`
  *   --name '<text>'   History step name (default "Claude edit")
- *   --no-history      Don't wrap in a single history step
+ *   --no-history      Don't wrap in a single history step (no rollback on failure)
  *   --no-modal        Run outside executeAsModal (read-only scripts only)
  *   --timeout MS      Job timeout (default 120000, max 300000)
  */
