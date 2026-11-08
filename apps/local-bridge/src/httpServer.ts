@@ -15,6 +15,8 @@ import { logger } from "./logger.js";
 
 const JOB_TIMEOUT_MS = 60_000;
 const MAX_JOB_TIMEOUT_MS = 5 * 60_000;
+// The panel polls every ~400ms when idle; a long job pauses polling, so allow slack
+const POLLER_STALE_MS = 10_000;
 
 export function createHttpApp(
   token: string,
@@ -24,6 +26,9 @@ export function createHttpApp(
   sendJobToPlugin: (jobId: string, type: string, payload: unknown) => boolean
 ): express.Express {
   const app = express();
+  let lastPollAt: Date | null = null;
+  const isPollerAlive = () =>
+    lastPollAt !== null && Date.now() - lastPollAt.getTime() < POLLER_STALE_MS;
 
   // ─── Middleware ──────────────────────────────────────────────────────────────
   app.use(
@@ -48,7 +53,9 @@ export function createHttpApp(
   app.get("/photoshop/status", (_req, res) => {
     const plugin = getConnectedPlugin();
     res.json({
-      connected: plugin !== null,
+      connected: plugin !== null || isPollerAlive(),
+      transport: plugin ? "websocket" : isPollerAlive() ? "http-polling" : null,
+      pluginLastPollAt: lastPollAt?.toISOString() ?? null,
       pluginVersion: plugin?.pluginVersion ?? null,
       photoshopVersion: plugin?.photoshopVersion ?? null,
       activeDocument: plugin?.activeDocument ?? null,
@@ -63,8 +70,8 @@ export function createHttpApp(
       bridgeConnected: true,
       port: (res.socket as { localPort?: number })?.localPort ?? 47831,
       queueSize: jobQueue.queueSize,
-      photoshopConnected: plugin !== null,
-      pluginLastSeenAt: plugin?.lastSeen.toISOString() ?? null,
+      photoshopConnected: plugin !== null || isPollerAlive(),
+      pluginLastSeenAt: plugin?.lastSeen.toISOString() ?? lastPollAt?.toISOString() ?? null,
       pendingResults: pendingResolvers.size,
     });
   });
@@ -136,6 +143,7 @@ export function createHttpApp(
   // ─── Poll Next Job (for HTTP polling fallback) ────────────────────────────────
   app.get("/jobs/next", (_req, res) => {
     // Returns the next queued job for plugins that poll instead of using WS
+    lastPollAt = new Date();
     const queued = jobQueue.nextQueued();
     if (!queued) {
       res.status(204).end();

@@ -2,8 +2,10 @@
  * local-bridge — index.ts
  * Entry point: starts HTTP + WebSocket bridge on localhost only.
  */
-import "dotenv/config";
+import dotenv from "dotenv";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { createHttpApp } from "./httpServer.js";
 import { createWebSocketServer } from "./websocketServer.js";
 import { JobQueue } from "./jobQueue.js";
@@ -12,6 +14,10 @@ import type { PendingResolverMap } from "./types.js";
 import { logger } from "./logger.js";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
+
+// `pnpm dev:bridge` runs with cwd=apps/local-bridge, so also load the repo-root .env
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+dotenv.config({ path: [path.resolve(".env"), path.join(REPO_ROOT, ".env")] });
 
 const PORT = parseInt(process.env.BRIDGE_PORT ?? "47831", 10);
 const TOKEN = process.env.REMIRDY_BRIDGE_TOKEN ?? "dev_insecure_token";
@@ -69,6 +75,25 @@ server.on("error", (err) => {
   logger.error("Bridge server error", err);
   process.exit(1);
 });
+
+// Optional idle shutdown (set by the /photoshop skill CLI when it starts the bridge on demand).
+// Panel polling doesn't count as activity; only submitted jobs do.
+const IDLE_EXIT_MINUTES = parseFloat(process.env.BRIDGE_IDLE_EXIT_MINUTES ?? "0");
+if (IDLE_EXIT_MINUTES > 0) {
+  let lastJobAt = Date.now();
+  server.on("request", (req: http.IncomingMessage) => {
+    if (req.method === "POST" && req.url === "/jobs") lastJobAt = Date.now();
+  });
+  setInterval(() => {
+    const idleMs = Date.now() - lastJobAt;
+    if (pendingResolvers.size === 0 && idleMs > IDLE_EXIT_MINUTES * 60_000) {
+      logger.info(`No jobs for ${IDLE_EXIT_MINUTES} min; shutting down bridge`);
+      server.close();
+      process.exit(0);
+    }
+  }, 30_000).unref();
+  logger.info(`   Idle exit: after ${IDLE_EXIT_MINUTES} min without jobs`);
+}
 
 process.on("SIGINT", () => {
   logger.info("Shutting down bridge...");

@@ -150,6 +150,24 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
+### Claude Code skill (`/photoshop`)
+
+[`claude-skill/photoshop`](claude-skill/photoshop) is a Claude Code skill for full, free-form editing of
+the open document. It skips the MCP tool layer: Claude sends UXP scripts and batchPlay descriptors
+straight to the panel through the bridge, then checks its work with layer-tree dumps and PNG previews.
+Each edit is a single undo step, and a failed script or batchPlay batch is rolled back as a whole.
+With `--no-history` there is no undo step, so a failure keeps any changes made before it.
+
+```bash
+ln -s "$PWD/claude-skill/photoshop" ~/.claude/skills/photoshop   # register (once)
+node claude-skill/photoshop/scripts/ps.mjs bridge                # start bridge in background
+node claude-skill/photoshop/scripts/ps.mjs status                # check the panel is connected
+```
+
+The skill loads when you type `/photoshop`, and automatically when you ask Claude about Photoshop or PSD files.
+
+The `launch`, `quit` and `stop` commands only work on macOS: they rely on `open`, `osascript` and `pkill`.
+
 ---
 
 ## Example Prompts

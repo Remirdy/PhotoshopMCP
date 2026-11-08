@@ -1,14 +1,12 @@
 {
   "id": "com.remirdy.photoshop-mcp",
   "name": "Remirdy Photoshop MCP",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "main": "index.html",
-  "host": [
-    {
-      "app": "PS",
-      "minVersion": "24.0"
-    }
-  ],
+  "host": {
+    "app": "PS",
+    "minVersion": "24.0"
+  },
   "entrypoints": [
     {
       "type": "panel",
@@ -27,6 +25,7 @@
     "network": {
       "domains": "all"
     },
-    "clipboard": "readAndWrite"
+    "clipboard": "readAndWrite",
+    "allowCodeGenerationFromStrings": true
   }
 }

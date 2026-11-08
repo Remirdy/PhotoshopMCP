@@ -23,6 +23,10 @@
     .doc-info { display: flex; gap: 6px; align-items: center; }
     .doc-label { color: var(--text-dim); }
     .doc-name { color: var(--text); font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-name.mismatch { color: var(--yellow); }
+    .activity { font-size: 12px; font-weight: 600; padding: 6px 8px; border-radius: var(--radius); border: 1px solid var(--border); color: var(--text-dim); }
+    .activity.working { background: rgba(255,193,7,0.15); color: var(--yellow); border-color: var(--yellow); }
+    .activity.session { background: rgba(229,57,53,0.15); color: var(--red); border-color: var(--red); }
     .btn { padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent; font-size: 12px; font-family: var(--font); cursor: pointer; font-weight: 600; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent-light); }
@@ -54,6 +58,11 @@
         <span class="doc-label">Active Document:</span>
         <span id="doc-name" class="doc-name">—</span>
       </div>
+      <div class="doc-info">
+        <span class="doc-label">Claude Target:</span>
+        <span id="target-name" class="doc-name">—</span>
+      </div>
+      <div id="activity" class="activity">Idle</div>
     </div>
 
     <div class="section">

@@ -64,21 +64,19 @@ export class BridgeClient {
       if (!response.ok) {
         const text = await response.text();
         logger.warn("Bridge returned non-OK status", { status: response.status, text });
-        if (response.status === 202) {
-          // Plugin not connected — switch to mock
-          return this.mockResponse<T>(type, payload, jobId);
-        }
         return makeError(`Bridge error ${response.status}: ${text}`, jobId) as JobResult<T>;
       }
 
       const result = (await response.json()) as JobResult<T>;
       return result;
     } catch (err) {
+      // Never fake success here: mock output is only produced when MOCK_MODE=true
       const msg = err instanceof Error ? err.message : String(err);
-      logger.warn("Bridge unreachable, falling back to mock mode", { error: msg });
-      return this.mockResponse<T>(type, payload, jobId, [
-        `Bridge unreachable (${msg}). Running in mock mode.`,
-      ]);
+      logger.warn("Bridge unreachable", { error: msg });
+      return makeError(
+        `Photoshop bridge unreachable at ${this.bridgeUrl} (${msg}). Start it with \`pnpm dev:bridge\`, or set MOCK_MODE=true for offline testing.`,
+        jobId
+      ) as JobResult<T>;
     }
   }
 
