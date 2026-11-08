@@ -5,6 +5,7 @@ var lastJob = null;
 var jobRunning = false;
 var pollFailures = 0;
 var reconnectTimer = null;
+var activeConnection = null;
 
 var POLL_INTERVAL_MS = 400;
 var POLL_IDLE_INTERVAL_MS = 2000;
@@ -100,6 +101,10 @@ function refreshDoc() {
 }
 
 function connect(retrying) {
+  var connection = { url: getUrl(), token: getToken() };
+  activeConnection = connection;
+  if (pollTimer) clearTimeout(pollTimer);
+  if (reconnectTimer) clearTimeout(reconnectTimer);
   if (ws) {
     try { ws.close(); } catch (e) {}
     ws = null;
@@ -111,17 +116,21 @@ function connect(retrying) {
     log("Checking bridge over HTTP: " + getUrl(), "info");
   }
 
-  fetch(getUrl() + "/health")
+  fetch(connection.url + "/health")
     .then(function (res) {
+      if (activeConnection !== connection) return;
       if (!res.ok) throw new Error("Health returned " + res.status);
       setStatus("connected");
       log("Bridge HTTP health OK", "ok");
       startPolling();
     })
     .catch(function (e) {
+      if (activeConnection !== connection) return;
       if (!retrying) log("Bridge not reachable (" + e.message + "). Retrying every 3s until it starts.", "warn");
       setStatus("connecting");
-      reconnectTimer = setTimeout(function () { connect(true); }, 3000);
+      reconnectTimer = setTimeout(function () {
+        if (activeConnection === connection) connect(true);
+      }, 3000);
     });
 }
 
@@ -138,19 +147,36 @@ function schedulePoll(delayMs) {
 }
 
 // Resolves to the next queued job, or null when the queue is empty
-function fetchNextJob() {
-  return fetch(getUrl() + "/jobs/next", {
-    headers: { "X-Bridge-Token": getToken() }
-  }).then(function (res) {
+function fetchNextJob(connection) {
+  return fetch(connection.url + "/jobs/next", {
+    headers: { "X-Bridge-Token": connection.token }
+  }).then(async function (res) {
     if (res.status === 204) return null;
+    if (activeConnection !== connection && !res.ok) return null;
     if (res.status === 401) {
       var authErr = new Error("Unauthorized: token does not match bridge");
       authErr.fatal = true;
       throw authErr;
     }
     if (!res.ok) throw new Error("Polling returned " + res.status);
-    return res.json();
+    var job = await res.json();
+    if (activeConnection !== connection) {
+      await discardJob(job, connection);
+      return null;
+    }
+    return job;
   });
+}
+
+function discardJob(job, connection) {
+  return sendResult(job.id, {
+    ok: false,
+    message: "Job was not executed because its panel connection or session ended.",
+    data: null,
+    warnings: [],
+    jobId: job.id,
+    photoshopStatus: activeConnection === connection ? "connected" : "disconnected"
+  }, connection);
 }
 
 // Poll one job at a time: Photoshop rejects overlapping executeAsModal calls,
@@ -159,8 +185,14 @@ function fetchNextJob() {
 function pollNextJob() {
   pollTimer = null;
   if (!connected || jobRunning || session) return;
-  fetchNextJob()
+  var connection = activeConnection;
+  if (!connection) return;
+  fetchNextJob(connection)
     .then(function (job) {
+      if (activeConnection !== connection) {
+        if (job) return discardJob(job, connection);
+        return;
+      }
       if (pollFailures > 0) log("Bridge reachable again", "ok");
       pollFailures = 0;
       setStatus("connected");
@@ -174,12 +206,13 @@ function pollNextJob() {
       lastJob = { jobId: job.id, jobType: job.type, payload: job.payload };
       btnRunLast.disabled = false;
       jobRunning = true;
-      handleJob(job.id, job.type, job.payload).then(function () {
+      handleJob(job.id, job.type, job.payload, connection).then(function () {
         jobRunning = false;
         schedulePoll(0);
       });
     })
     .catch(function (e) {
+      if (activeConnection !== connection) return;
       if (e.fatal) {
         log(e.message, "error");
         disconnect();
@@ -247,6 +280,7 @@ function connectWebSocketUnused() {
 }
 
 function disconnect() {
+  activeConnection = null;
   if (pollTimer) {
     clearTimeout(pollTimer);
     pollTimer = null;
@@ -263,24 +297,28 @@ function disconnect() {
   log("Disconnected", "warn");
 }
 
-function sendResult(jobId, result) {
-  if (ws && ws.readyState === 1) {
+function sendResult(jobId, result, connection) {
+  if (!connection && ws && ws.readyState === 1) {
     ws.send(JSON.stringify({ type: "jobResult", jobId: jobId, result: result }));
     return;
   }
-  fetch(getUrl() + "/jobs/" + encodeURIComponent(jobId) + "/result", {
+  connection = connection || activeConnection || { url: getUrl(), token: getToken() };
+  return fetch(connection.url + "/jobs/" + encodeURIComponent(jobId) + "/result", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Bridge-Token": getToken()
+      "X-Bridge-Token": connection.token
     },
     body: JSON.stringify(result)
+  }).then(function (res) {
+    if (!res.ok) throw new Error("Bridge returned " + res.status);
   }).catch(function (e) {
     log("Result send failed: " + e.message, "error");
   });
 }
 
-async function handleJob(jobId, jobType, payload) {
+async function handleJob(jobId, jobType, payload, connection) {
+  connection = connection || activeConnection || { url: getUrl(), token: getToken() };
   payload = payload || {};
   if (payload.documentId !== undefined && payload.documentId !== null) {
     lastTarget = { id: payload.documentId, title: payload.documentTitle };
@@ -298,7 +336,7 @@ async function handleJob(jobId, jobType, payload) {
   }
   // Tells the CLI whether this job ran inside a session lock
   result.session = !!session;
-  sendResult(jobId, result);
+  await sendResult(jobId, result, connection);
   if (session) setActivity("session", session.label);
   else setActivity("idle");
 }
@@ -909,9 +947,11 @@ function beginSession(payload) {
   var ps = require("photoshop");
   var label = payload.label || "Claude session";
   var idleMs = Math.min(Math.max(Number(payload.idleMs) || SESSION_IDLE_DEFAULT_MS, 5000), SESSION_IDLE_MAX_MS);
+  var connection = activeConnection;
 
   return new Promise(function (resolve, reject) {
     ps.core.executeAsModal(async function (executionContext) {
+      if (!connection || activeConnection !== connection) throw new Error("Panel disconnected before the session started");
       var doc = targetDocument(ps.app, payload);
       if (!doc) throw new Error("No document to lock a session to");
       var front = activeDocumentOrNull(ps.app);
@@ -921,7 +961,7 @@ function beginSession(payload) {
       setActivity("session", label);
       log("Session started: " + label + " on " + doc.title, "ok");
       resolve({ label: label, documentId: doc.id, title: doc.title, idleSeconds: idleMs / 1000 });
-      return runSessionLoop();
+      return runSessionLoop(session, connection);
     }, { commandName: "Claude: " + label }).then(function (reason) {
       log("Session ended (" + reason + ")" + (session ? ", " + session.jobs + " jobs" : ""), reason === "cancelled" ? "warn" : "ok");
     }, function (e) {
@@ -936,22 +976,28 @@ function beginSession(payload) {
   });
 }
 
-async function runSessionLoop() {
+async function runSessionLoop(currentSession, connection) {
   while (true) {
+    if (session !== currentSession || activeConnection !== connection) return "disconnected";
     if (session.ending) return "ended";
     if (session.executionContext.isCancelled) return "cancelled";
     if (!connected) return "disconnected";
     if (Date.now() - session.lastJobAt > session.idleMs) return "idle " + Math.round(session.idleMs / 1000) + "s";
     var job;
     try {
-      job = await fetchNextJob();
+      job = await fetchNextJob(connection);
     } catch (e) {
+      if (activeConnection !== connection) return "disconnected";
       if (e.fatal) {
         log(e.message, "error");
         return "unauthorized";
       }
       await delay(POLL_INTERVAL_MS);
       continue;
+    }
+    if (activeConnection !== connection || session !== currentSession || currentSession.executionContext.isCancelled) {
+      if (job) await discardJob(job, connection);
+      return currentSession.executionContext.isCancelled ? "cancelled" : "disconnected";
     }
     if (!job) {
       await delay(POLL_INTERVAL_MS);
@@ -961,14 +1007,14 @@ async function runSessionLoop() {
     lastJobAt = Date.now();
     log("Job received: " + job.type, "info");
     lastJob = { jobId: job.id, jobType: job.type, payload: job.payload };
-    await handleJob(job.id, job.type, job.payload);
+    await handleJob(job.id, job.type, job.payload, connection);
     // Idle time counts from when a job finishes, so a long job can't end the session
     session.lastJobAt = Date.now();
   }
 }
 
 btnConnect.addEventListener("click", function () {
-  if (connected || reconnectTimer) disconnect();
+  if (activeConnection || connected || reconnectTimer) disconnect();
   else connect();
 });
 
